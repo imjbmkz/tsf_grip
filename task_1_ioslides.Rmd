@@ -1,0 +1,162 @@
+---
+title: "Predicting examination scores based on study hours"
+subtitle: "Practical linear regression with R"
+output: 
+        ioslides_presentation:
+                widescreen: true
+                smaller: true
+                logo: tsflogo.png
+                transition: 0
+---
+
+```{r, echo=FALSE}
+# for data visualization
+library(ggplot2)
+library(ggpubr)
+
+# set directory
+setwd('~/The Sparks Foundation/Task 1/')
+
+# get data
+student_data = read.csv('student_scores - student_scores.csv')
+```
+
+## Background of the problem
+
+-   You have a small [dataset](https://raw.githubusercontent.com/AdiPersonalWorks/Random/master/student_scores%20-%20student_scores.csv) of students' **hours of studying** and their corresponding **scores** for an examination.
+
+-   You want to **model the relationship** of the students' studying hours and their examination scores.
+
+-   Using this model, you want to **predict** the **examination score** of a student if s/he studied for **9.25 hours**.
+
+## Supervised Machine Learning
+
+-   In **supervised machine learning**, we have our **input** variables (ie. predictor or independent variables) that are passed into a **function** that will produce an **output** (ie. response, dependent variables)
+
+$$
+Y = f(X)
+$$
+
+-   A **regression problem** is when the output variable is a **real value**, such as "dollars" or "weight".
+
+<!-- -->
+
+-   A **classification problem** is when the output variable is a **category**, such as "red" or "blue" or "disease" and "no disease".
+
+## What is linear regression?
+
+-   [**Linear regression**]{.ul} models the relationship between two variables by fitting a linear equation to the observed data ([www.stat.yale.edu](http://www.stat.yale.edu/Courses/1997-98/101/linreg.htm)).
+
+$Y = \beta_0 + \beta_1X + \epsilon$
+
+$Y = \beta_0 + \beta_1X_1 + \beta_2X_2 + \beta_3X_3 + ... + \beta_nX_n + \epsilon$ where $n$ = number of input variables
+
+```{r, echo=FALSE, fig.align='center', fig.height=4, fig.width=7}
+with(student_data, plot(Hours, Scores, pch = 19, col = 'red'))
+abline(lm(Scores ~ Hours, student_data), lwd = 2, col = 'black')
+title(main = 'Regression on students\' study hours and exam scores.')
+```
+
+## About the data
+
+```{r, warning=FALSE}
+# read the data from source
+student_data = read.csv('student_scores - student_scores.csv')
+
+# view first few rows
+head(student_data)
+
+# get number of rows and columns
+dim(student_data)
+```
+
+## Training the model
+
+```{r, warning=FALSE}
+# train the linear regression model
+lin_reg_model = lm(Scores ~ Hours, student_data)
+summary(lin_reg_model)
+```
+
+## Understanding regression output: Residuals
+
+`Residuals` section displays the [5-number summary of the residuals]{.ul}. **Residuals** are the distances between the actual response variable and the predicted value.
+
+```{r, echo=FALSE, fig.width=8, fig.height=3, fig.align='center'}
+summary(resid(lin_reg_model))
+
+student_data$Predicted = predict(lin_reg_model)
+student_data$Residual = resid(lin_reg_model)
+
+residual1 = ggplot(student_data, aes(x = Hours, y = Scores)) +
+        geom_point(col = 'red') +
+        geom_line(aes(y = Predicted), lwd = 1, col = 'steelblue') + 
+        geom_segment(aes(xend=Hours, yend=Predicted), col='red') +
+        theme_minimal() + 
+        labs(title = 'Residual plot: Actual vs. Predicted Scores')
+
+residual2 = ggplot(student_data, aes(x = Predicted, y = Residual)) + 
+        geom_point(col = 'red') + 
+        geom_hline(yintercept = 0, col = 'steelblue', lwd = 1) +
+        geom_segment(aes(xend=Predicted, yend=0), col='red') + 
+        theme_minimal() + 
+        labs(title = 'Zoomed residual plot')
+
+ggarrange(residual1, residual2)
+```
+
+## Understanding regression output: Coefficients
+
+The linear regression model is represented by the equation $Y = \beta_0 + \beta_1X + \epsilon$. The Coefficients are the estimated values of the $\beta$'s or constants in the linear regression model.
+
+$\beta_0$ (Intercept) is the value of $Y$ when $X$ is 0. $\beta_1$ is the unit change in $Y$ for every unit change in $X$. Depending on the number of variables, linear regression output can have multiple $\beta$.
+
+`Pr(>|t|)` tells us if the values of the coefficients are statistically significant.
+
+```{r, echo=FALSE}
+summary(lin_reg_model)$coef
+```
+
+## Understanding regression output: Multiple and Adjusted R-squared
+
+R-Squared is the "goodness of fit" measure in linear regression. This is the percentage of the variability of the response variable which is explained by the model.
+
+Adjusted R-Squared does the same. Adjusted R-Squared will be penalized if we're adding terms/variables that aren't useful, and it increases when we're adding meaningful variables.
+
+Low R-squared doesn't necessarily mean that your model is useless.
+
+```{r, echo=FALSE}
+lin_reg_summary = summary(lin_reg_model)
+cat('Multiple R-squared: ', round(lin_reg_summary$r.squared, 4), ' Adjusted R-squared: ', round(lin_reg_summary$adj.r.squared, 4))
+```
+
+## Predicting using the model
+
+```{r}
+new_data = data.frame(Hours = 9.25)
+predict(lin_reg_model, newdata = new_data)
+predict(lin_reg_model, newdata = new_data, interval = 'confidence')
+```
+
+## Confidence interval of the linear regression model
+```{r, echo=FALSE, message=FALSE}
+student_data %>% 
+        ggplot(aes(x = Hours, y = Scores)) + 
+        geom_point(col = 'red') + 
+        geom_smooth(method = 'lm', se = TRUE, color = 'steelblue', lwd = 1) + 
+        theme_minimal() + 
+        labs(title = 'Confidence interval of linear regression model')
+```
+
+## Summary
+
+Using linear regression, we have modeled the relationship of study hours and exam scores. The model can be written $Y = 2.48 + 9.78X$.
+
+Having a Multiple R-squared of **0.9529** and adjusted R-squared of **0.9509**, the model predicts with high accuracy.
+
+The patterns on residual plot is something that we could look further.
+
+When a student studied for **9.25** hours, s/he could score between **88.31** to **97.51** points following a **95% confidence interval**.
+
+## Thank you
+
